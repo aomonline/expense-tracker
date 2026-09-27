@@ -18,7 +18,7 @@
 <!-- ================= CONFIG ================= -->
 <script>
   // วางลิงก์ Web App ที่ได้จากการ Deploy Google Apps Script ตรงนี้
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxZ4EkcaDIhpOqtx2-CFDWPbQtiCIEp08jrx62MsLKZoXt94lQwnFAWkyk8Lw4dkKZW/exec";
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzZmaxBtq3p45YIQjvEJpJrakN-obxAygQkP9MJKUAfwraOiZPy6r-u1k-sbQWcnJQS/exec";
   const CACHE_KEY = "expenseTrackerCache";
   const CYCLE_CACHE_KEY = "expenseTrackerCycleCache";
   const MAX_ITEMS = 30;
@@ -300,7 +300,7 @@ async function init() {
 }
 
 async function refreshHistory() {
-  if (!WEB_APP_URL || WEB_APP_URL.indexOf("https://script.google.com/macros/s/AKfycbxZ4EkcaDIhpOqtx2-CFDWPbQtiCIEp08jrx62MsLKZoXt94lQwnFAWkyk8Lw4dkKZW/exec") === 0) {
+  if (!WEB_APP_URL || WEB_APP_URL.indexOf("https://script.google.com/macros/s/AKfycbzZmaxBtq3p45YIQjvEJpJrakN-obxAygQkP9MJKUAfwraOiZPy6r-u1k-sbQWcnJQS/exec") === 0) {
     el("syncStatus").textContent = "ยังไม่ได้ตั้งค่า WEB_APP_URL";
     return;
   }
@@ -321,7 +321,7 @@ async function refreshHistory() {
 
 // ดึงยอดตามรอบ (25 - 24) จริง ๆ จากทั้งชีต ไม่ใช่แค่ 30 รายการล่าสุด
 async function refreshCycleSummary() {
-  if (!WEB_APP_URL || WEB_APP_URL.indexOf("https://script.google.com/macros/s/AKfycbxZ4EkcaDIhpOqtx2-CFDWPbQtiCIEp08jrx62MsLKZoXt94lQwnFAWkyk8Lw4dkKZW/exec") === 0) return;
+  if (!WEB_APP_URL || WEB_APP_URL.indexOf("https://script.google.com/macros/s/AKfycbzZmaxBtq3p45YIQjvEJpJrakN-obxAygQkP9MJKUAfwraOiZPy6r-u1k-sbQWcnJQS/exec") === 0) return;
   try {
     const url = `${WEB_APP_URL}?action=summary&start=${isoDate(currentCycle.start)}&end=${isoDate(currentCycle.end)}`;
     const res = await fetch(url);
