@@ -18,9 +18,11 @@
 <!-- ================= CONFIG ================= -->
 <script>
   // วางลิงก์ Web App ที่ได้จากการ Deploy Google Apps Script ตรงนี้
-  const WEB_APP_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby3ua9vxMPi4_P1dul1v3Tt6lkLWwQB5SowWcPFaf11Ai0o18QN_a6bA8eEqeI-4Dwf/exec";
   const CACHE_KEY = "expenseTrackerCache";
+  const CYCLE_CACHE_KEY = "expenseTrackerCycleCache";
   const MAX_ITEMS = 30;
+  const CYCLE_START_DAY = 25; // รอบคือวันที่ 25 ของเดือนนี้ ถึงวันที่ 24 ของเดือนถัดไป เสมอ
 </script>
 
 <div class="max-w-md mx-auto px-4 pt-6">
@@ -32,10 +34,11 @@
 
   <!-- ============ Dashboard ============ -->
   <section class="bg-slate-900 rounded-xl p-4 mb-5 border border-slate-800">
-    <div class="flex items-baseline justify-between mb-3">
-      <span class="text-sm text-slate-400">ยอดรวม (30 รายการล่าสุด)</span>
+    <div class="flex items-baseline justify-between mb-1">
+      <span class="text-sm text-slate-400">ยอดรวมรอบนี้</span>
       <span id="totalAmount" class="text-2xl font-bold text-emerald-400">฿0</span>
     </div>
+    <p id="cycleLabel" class="text-xs text-slate-500 mb-3"></p>
 
     <div class="grid grid-cols-2 gap-4 mt-4">
       <div>
@@ -146,12 +149,51 @@ function saveCache(items) {
   } catch (e) { /* storage full or unavailable - ignore */ }
 }
 
+function loadCycleCache(key) {
+  try {
+    const raw = localStorage.getItem(CYCLE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed.key === key ? parsed : null; // รอบเปลี่ยน แคชเก่าใช้ไม่ได้
+  } catch (e) { return null; }
+}
+
+function saveCycleCache(key, items) {
+  try {
+    localStorage.setItem(CYCLE_CACHE_KEY, JSON.stringify({ key, items, lastSync: Date.now() }));
+  } catch (e) { /* ignore */ }
+}
+
+// รอบคือ 25 ของเดือน ถึง 24 ของเดือนถัดไป เสมอ
+function getCycleRange(refDate = new Date()) {
+  const y = refDate.getFullYear();
+  const m = refDate.getMonth();
+  let startY = y, startM = m;
+  if (refDate.getDate() < CYCLE_START_DAY) {
+    startM -= 1;
+    if (startM < 0) { startM = 11; startY -= 1; }
+  }
+  const start = new Date(startY, startM, CYCLE_START_DAY);
+  const end = new Date(startY, startM + 1, CYCLE_START_DAY - 1);
+  return { start, end, key: isoDate(start) };
+}
+
+function isoDate(d) {
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function fmtDateShort(d) {
+  const months = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+}
+
 function fmt(n) {
   return "฿" + Number(n || 0).toLocaleString("th-TH", { maximumFractionDigits: 0 });
 }
 
-function render(items) {
-  // History list
+function renderHistory(items) {
   const list = el("historyList");
   const emptyMsg = el("emptyMsg");
   list.innerHTML = "";
@@ -171,8 +213,10 @@ function render(items) {
       list.appendChild(row);
     });
   }
+}
 
-  // Dashboard totals
+function renderDashboard(items) {
+  // items ที่ส่งเข้ามาต้องเป็นรายการเฉพาะ "รอบปัจจุบัน" เท่านั้น (ดู getCycleRange)
   const total = items.reduce((s, it) => s + Number(it.amount || 0), 0);
   el("totalAmount").textContent = fmt(total);
 
@@ -215,17 +259,26 @@ function escapeHtml(s) {
 }
 
 // ---------- Data flow: cache first, then background refresh ----------
+const currentCycle = getCycleRange();
+
 async function init() {
+  el("cycleLabel").textContent = `รอบ ${fmtDateShort(currentCycle.start)} - ${fmtDateShort(currentCycle.end)}`;
+
   const cache = loadCache();
-  render(cache.items);
+  renderHistory(cache.items);
+
+  const cycleCache = loadCycleCache(currentCycle.key);
+  renderDashboard(cycleCache ? cycleCache.items : []);
+
   el("syncStatus").textContent = cache.lastSync
     ? "แสดงข้อมูลจากเครื่อง · กำลังอัปเดต..."
     : "กำลังโหลดข้อมูล...";
-  await refreshFromServer();
+
+  await Promise.all([refreshHistory(), refreshCycleSummary()]);
 }
 
-async function refreshFromServer() {
-  if (!WEB_APP_URL || WEB_APP_URL.indexOf("https://script.google.com/macros/s/AKfycbzjAOcWazuvyp7xT6xnhy8bi-boxXjluy3-M27CAeCcP_plhOnrWt7NXkHHymQV5ybT/exec") === 0) {
+async function refreshHistory() {
+  if (!WEB_APP_URL || WEB_APP_URL.indexOf("PASTE_YOUR") === 0) {
     el("syncStatus").textContent = "ยังไม่ได้ตั้งค่า WEB_APP_URL";
     return;
   }
@@ -234,7 +287,7 @@ async function refreshFromServer() {
     const data = await res.json();
     if (data.status === "success") {
       saveCache(data.items);
-      render(data.items);
+      renderHistory(data.items);
       el("syncStatus").textContent = "อัปเดตล่าสุด " + new Date().toLocaleTimeString("th-TH");
     } else {
       throw new Error(data.message || "โหลดข้อมูลไม่สำเร็จ");
@@ -242,6 +295,20 @@ async function refreshFromServer() {
   } catch (e) {
     el("syncStatus").textContent = "ออฟไลน์ · แสดงข้อมูลที่บันทึกไว้ในเครื่อง";
   }
+}
+
+// ดึงยอดตามรอบ (25 - 24) จริง ๆ จากทั้งชีต ไม่ใช่แค่ 30 รายการล่าสุด
+async function refreshCycleSummary() {
+  if (!WEB_APP_URL || WEB_APP_URL.indexOf("PASTE_YOUR") === 0) return;
+  try {
+    const url = `${WEB_APP_URL}?action=summary&start=${isoDate(currentCycle.start)}&end=${isoDate(currentCycle.end)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status === "success") {
+      saveCycleCache(currentCycle.key, data.items);
+      renderDashboard(data.items);
+    }
+  } catch (e) { /* เก็บค่าที่แคชไว้ต่อไปเงียบ ๆ ถ้าออฟไลน์ */ }
 }
 
 el("f_date").valueAsDate = new Date();
@@ -265,7 +332,7 @@ el("expenseForm").addEventListener("submit", async (e) => {
   // Optimistic update: show it locally right away
   const cache = loadCache();
   const optimisticItems = [payload, ...cache.items].slice(0, MAX_ITEMS);
-  render(optimisticItems);
+  renderHistory(optimisticItems);
 
   try {
     const res = await fetch(WEB_APP_URL, {
@@ -277,10 +344,20 @@ el("expenseForm").addEventListener("submit", async (e) => {
     if (data.status !== "success") throw new Error(data.message || "บันทึกไม่สำเร็จ");
 
     saveCache(optimisticItems);
+
+    const itemDate = new Date(payload.date + "T00:00:00");
+    if (itemDate >= currentCycle.start && itemDate <= currentCycle.end) {
+      const cycleCache = loadCycleCache(currentCycle.key);
+      const cycleItems = [payload, ...(cycleCache ? cycleCache.items : [])];
+      saveCycleCache(currentCycle.key, cycleItems);
+      renderDashboard(cycleItems);
+    }
+
     showToast("บันทึกรายการเรียบร้อย");
     e.target.reset();
     el("f_date").valueAsDate = new Date();
-    refreshFromServer();
+    refreshHistory();
+    refreshCycleSummary();
   } catch (err) {
     showToast("บันทึกไม่สำเร็จ: " + err.message, true);
   } finally {
