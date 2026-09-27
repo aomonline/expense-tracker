@@ -18,11 +18,18 @@
 <!-- ================= CONFIG ================= -->
 <script>
   // วางลิงก์ Web App ที่ได้จากการ Deploy Google Apps Script ตรงนี้
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwSLO2cBcLNj-lT3GSFDj-Y8hv4Vbg4YAvN4ynTN-oMne2awRaFOjex2e6S0C3kghN7/exec";
+  const WEB_APP_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
   const CACHE_KEY = "expenseTrackerCache";
   const CYCLE_CACHE_KEY = "expenseTrackerCycleCache";
   const MAX_ITEMS = 30;
   const CYCLE_START_DAY = 25; // รอบคือวันที่ 25 ของเดือนนี้ ถึงวันที่ 24 ของเดือนถัดไป เสมอ
+
+  const CATEGORY_ICONS = {
+    "ผ่อนคอนโด": "🏠", "อาหาร": "🍜", "เครื่องดื่ม": "🥤", "ช้อปปิ้ง": "🛍️",
+    "ของขวัญ": "🎁", "ท่องเที่ยว": "✈️", "บันเทิง": "🎬", "สุขภาพ": "💊",
+    "ค่าน้ำค่าไฟ": "💡", "ประกัน": "🛡️", "อื่นๆ": "📦",
+  };
+  function categoryIcon(cat) { return CATEGORY_ICONS[cat] || "📦"; }
 </script>
 
 <div class="max-w-md mx-auto px-4 pt-6">
@@ -54,16 +61,11 @@
 
   <!-- ============ Form ============ -->
   <section class="bg-slate-900 rounded-xl p-4 mb-5 border border-slate-800">
-    <h2 class="text-sm font-medium text-slate-300 mb-3">เพิ่มรายการใหม่</h2>
+    <h2 id="formTitle" class="text-sm font-medium text-slate-300 mb-3">เพิ่มรายการใหม่</h2>
     <form id="expenseForm" class="space-y-3">
       <div>
         <label class="block text-xs text-slate-500 mb-1">วันที่</label>
         <input type="date" id="f_date" required
-          class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-      </div>
-      <div>
-        <label class="block text-xs text-slate-500 mb-1">รายการ / รายละเอียด (ไม่บังคับ)</label>
-        <input type="text" id="f_desc" placeholder="เช่น ค่าอาหารเที่ยง"
           class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
       </div>
       <div>
@@ -76,17 +78,17 @@
           <label class="block text-xs text-slate-500 mb-1">หมวดหมู่</label>
           <select id="f_category" required
             class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-            <option value="ผ่อนคอนโด">ผ่อนคอนโด</option>
-            <option value="อาหาร" selected>อาหาร</option>
-            <option value="เครื่องดื่ม">เครื่องดื่ม</option>
-            <option value="ช้อปปิ้ง">ช้อปปิ้ง</option>
-            <option value="ของขวัญ">ของขวัญ</option>
-            <option value="ท่องเที่ยว">ท่องเที่ยว</option>
-            <option value="บันเทิง">บันเทิง</option>
-            <option value="สุขภาพ">สุขภาพ</option>
-            <option value="ค่าน้ำค่าไฟ">ค่าน้ำค่าไฟ</option>
-            <option value="ประกัน">ประกัน</option>
-            <option value="อื่นๆ">อื่นๆ</option>
+            <option value="ผ่อนคอนโด">🏠 ผ่อนคอนโด</option>
+            <option value="อาหาร" selected>🍜 อาหาร</option>
+            <option value="เครื่องดื่ม">🥤 เครื่องดื่ม</option>
+            <option value="ช้อปปิ้ง">🛍️ ช้อปปิ้ง</option>
+            <option value="ของขวัญ">🎁 ของขวัญ</option>
+            <option value="ท่องเที่ยว">✈️ ท่องเที่ยว</option>
+            <option value="บันเทิง">🎬 บันเทิง</option>
+            <option value="สุขภาพ">💊 สุขภาพ</option>
+            <option value="ค่าน้ำค่าไฟ">💡 ค่าน้ำค่าไฟ</option>
+            <option value="ประกัน">🛡️ ประกัน</option>
+            <option value="อื่นๆ">📦 อื่นๆ</option>
           </select>
         </div>
         <div>
@@ -100,14 +102,25 @@
         </div>
       </div>
       <div>
+        <label class="block text-xs text-slate-500 mb-1">รายการ / รายละเอียด (ไม่บังคับ)</label>
+        <input type="text" id="f_desc" placeholder="เช่น ค่าอาหารเที่ยง"
+          class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div>
         <label class="block text-xs text-slate-500 mb-1">หมายเหตุ (ไม่บังคับ)</label>
         <input type="text" id="f_note"
           class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
       </div>
-      <button type="submit" id="submitBtn"
-        class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-medium rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50">
-        บันทึกรายการ
-      </button>
+      <div class="flex gap-2">
+        <button type="submit" id="submitBtn"
+          class="flex-1 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-medium rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50">
+          บันทึกรายการ
+        </button>
+        <button type="button" id="cancelEditBtn"
+          class="hidden bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-lg py-2.5 px-4 text-sm transition-colors">
+          ยกเลิก
+        </button>
+      </div>
     </form>
   </section>
 
@@ -123,8 +136,11 @@
 <!-- Toast -->
 <div id="toast" class="toast fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 text-sm px-4 py-2 rounded-lg opacity-0 pointer-events-none"></div>
 
+
 <script>
 const el = id => document.getElementById(id);
+let currentHistoryItems = [];
+let editingRow = null;
 
 function showToast(msg, isError) {
   const t = el("toast");
@@ -194,6 +210,7 @@ function fmt(n) {
 }
 
 function renderHistory(items) {
+  currentHistoryItems = items;
   const list = el("historyList");
   const emptyMsg = el("emptyMsg");
   list.innerHTML = "";
@@ -203,13 +220,18 @@ function renderHistory(items) {
     emptyMsg.classList.add("hidden");
     items.forEach(it => {
       const row = document.createElement("div");
-      row.className = "bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 flex items-center justify-between";
+      row.className = "bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 flex items-center gap-3";
       row.innerHTML = `
-        <div class="min-w-0">
+        <div class="text-lg shrink-0 w-7 text-center">${categoryIcon(it.category)}</div>
+        <div class="min-w-0 flex-1">
           <p class="text-sm text-slate-100 truncate">${escapeHtml(it.description) || "<span class=\"text-slate-500\">(ไม่มีรายละเอียด)</span>"}</p>
           <p class="text-xs text-slate-500">${escapeHtml(it.date)} · ${escapeHtml(it.category)} · ${escapeHtml(it.channel)}</p>
         </div>
-        <span class="text-sm font-medium text-slate-100 shrink-0 ml-3">${fmt(it.amount)}</span>`;
+        <span class="text-sm font-medium text-slate-100 shrink-0">${fmt(it.amount)}</span>
+        <div class="flex gap-1 shrink-0">
+          <button data-action="edit" data-row="${it.row || ""}" class="text-slate-500 hover:text-emerald-400 p-1" title="แก้ไข" type="button">✏️</button>
+          <button data-action="delete" data-row="${it.row || ""}" class="text-slate-500 hover:text-red-400 p-1" title="ลบ" type="button">🗑️</button>
+        </div>`;
       list.appendChild(row);
     });
   }
@@ -299,7 +321,7 @@ async function refreshHistory() {
 
 // ดึงยอดตามรอบ (25 - 24) จริง ๆ จากทั้งชีต ไม่ใช่แค่ 30 รายการล่าสุด
 async function refreshCycleSummary() {
-  if (!WEB_APP_URL || WEB_APP_URL.indexOf("PASTE_YOUR") === 0) return;
+  if (!WEB_APP_URL || WEB_APP_URL.indexOf("https://script.google.com/macros/s/AKfycbwDWzjzr86x_uuXYL_kbtncfUlWsqEKkx6u5MGNT8_g21w0q1NX-MB1njqSkYFxJuyC/exec") === 0) return;
   try {
     const url = `${WEB_APP_URL}?action=summary&start=${isoDate(currentCycle.start)}&end=${isoDate(currentCycle.end)}`;
     const res = await fetch(url);
@@ -311,11 +333,67 @@ async function refreshCycleSummary() {
   } catch (e) { /* เก็บค่าที่แคชไว้ต่อไปเงียบ ๆ ถ้าออฟไลน์ */ }
 }
 
+el("historyList").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
+  const row = Number(btn.dataset.row);
+  if (!row) { showToast("รายการนี้ยังซิงก์ไม่เสร็จ กรุณารอสักครู่"); return; }
+  const item = currentHistoryItems.find(it => it.row === row);
+  if (!item) return;
+  if (btn.dataset.action === "edit") startEdit(item);
+  if (btn.dataset.action === "delete") deleteItem(item);
+});
+
+function startEdit(item) {
+  editingRow = item.row;
+  el("f_date").value = item.date;
+  el("f_amount").value = item.amount;
+  el("f_category").value = item.category;
+  el("f_channel").value = item.channel;
+  el("f_desc").value = item.description || "";
+  el("f_note").value = item.note || "";
+  el("formTitle").textContent = "แก้ไขรายการ";
+  el("submitBtn").textContent = "บันทึกการแก้ไข";
+  el("cancelEditBtn").classList.remove("hidden");
+  el("expenseForm").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function cancelEdit() {
+  editingRow = null;
+  el("expenseForm").reset();
+  el("f_date").valueAsDate = new Date();
+  el("formTitle").textContent = "เพิ่มรายการใหม่";
+  el("submitBtn").textContent = "บันทึกรายการ";
+  el("cancelEditBtn").classList.add("hidden");
+}
+
+el("cancelEditBtn").addEventListener("click", cancelEdit);
+
+async function deleteItem(item) {
+  if (!confirm("ต้องการลบรายการนี้ใช่หรือไม่?")) return;
+  try {
+    const res = await fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "delete", row: item.row }),
+    });
+    const data = await res.json();
+    if (data.status !== "success") throw new Error(data.message || "ลบไม่สำเร็จ");
+    showToast("ลบรายการเรียบร้อย");
+    if (editingRow === item.row) cancelEdit();
+    refreshHistory();
+    refreshCycleSummary();
+  } catch (err) {
+    showToast("ลบไม่สำเร็จ: " + err.message, true);
+  }
+}
+
 el("f_date").valueAsDate = new Date();
 
 el("expenseForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = el("submitBtn");
+  const isEditing = editingRow !== null;
   const payload = {
     date: el("f_date").value,
     description: el("f_desc").value.trim(),
@@ -325,14 +403,17 @@ el("expenseForm").addEventListener("submit", async (e) => {
     note: el("f_note").value.trim(),
   };
   if (!payload.amount) return;
+  if (isEditing) { payload.action = "update"; payload.row = editingRow; }
 
   btn.disabled = true;
-  btn.textContent = "กำลังบันทึก...";
+  btn.textContent = isEditing ? "กำลังบันทึกการแก้ไข..." : "กำลังบันทึก...";
 
-  // Optimistic update: show it locally right away
-  const cache = loadCache();
-  const optimisticItems = [payload, ...cache.items].slice(0, MAX_ITEMS);
-  renderHistory(optimisticItems);
+  // Optimistic update only makes sense for a brand-new entry
+  if (!isEditing) {
+    const cache = loadCache();
+    const optimisticItems = [payload, ...cache.items].slice(0, MAX_ITEMS);
+    renderHistory(optimisticItems);
+  }
 
   try {
     const res = await fetch(WEB_APP_URL, {
@@ -341,28 +422,32 @@ el("expenseForm").addEventListener("submit", async (e) => {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (data.status !== "success") throw new Error(data.message || "บันทึกไม่สำเร็จ");
+    if (data.status !== "success") throw new Error(data.message || (isEditing ? "แก้ไขไม่สำเร็จ" : "บันทึกไม่สำเร็จ"));
 
-    saveCache(optimisticItems);
+    if (!isEditing) {
+      const cache = loadCache();
+      const optimisticItems = [payload, ...cache.items].slice(0, MAX_ITEMS);
+      saveCache(optimisticItems);
 
-    const itemDate = new Date(payload.date + "T00:00:00");
-    if (itemDate >= currentCycle.start && itemDate <= currentCycle.end) {
-      const cycleCache = loadCycleCache(currentCycle.key);
-      const cycleItems = [payload, ...(cycleCache ? cycleCache.items : [])];
-      saveCycleCache(currentCycle.key, cycleItems);
-      renderDashboard(cycleItems);
+      const itemDate = new Date(payload.date + "T00:00:00");
+      if (itemDate >= currentCycle.start && itemDate <= currentCycle.end) {
+        const cycleCache = loadCycleCache(currentCycle.key);
+        const cycleItems = [payload, ...(cycleCache ? cycleCache.items : [])];
+        saveCycleCache(currentCycle.key, cycleItems);
+        renderDashboard(cycleItems);
+      }
     }
 
-    showToast("บันทึกรายการเรียบร้อย");
-    e.target.reset();
-    el("f_date").valueAsDate = new Date();
+    showToast(isEditing ? "แก้ไขรายการเรียบร้อย" : "บันทึกรายการเรียบร้อย");
+    cancelEdit();
     refreshHistory();
     refreshCycleSummary();
   } catch (err) {
-    showToast("บันทึกไม่สำเร็จ: " + err.message, true);
+    showToast((isEditing ? "แก้ไขไม่สำเร็จ: " : "บันทึกไม่สำเร็จ: ") + err.message, true);
+    if (!isEditing) renderHistory(loadCache().items);
   } finally {
     btn.disabled = false;
-    btn.textContent = "บันทึกรายการ";
+    btn.textContent = editingRow ? "บันทึกการแก้ไข" : "บันทึกรายการ";
   }
 });
 
