@@ -18,7 +18,7 @@
 <!-- ================= CONFIG ================= -->
 <script>
   // วางลิงก์ Web App ที่ได้จากการ Deploy Google Apps Script ตรงนี้
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby3ua9vxMPi4_P1dul1v3Tt6lkLWwQB5SowWcPFaf11Ai0o18QN_a6bA8eEqeI-4Dwf/exec";
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwSLO2cBcLNj-lT3GSFDj-Y8hv4Vbg4YAvN4ynTN-oMne2awRaFOjex2e6S0C3kghN7/exec";
   const CACHE_KEY = "expenseTrackerCache";
   const CYCLE_CACHE_KEY = "expenseTrackerCycleCache";
   const MAX_ITEMS = 30;
@@ -62,8 +62,8 @@
           class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
       </div>
       <div>
-        <label class="block text-xs text-slate-500 mb-1">รายการ / รายละเอียด</label>
-        <input type="text" id="f_desc" required placeholder="เช่น ค่าอาหารเที่ยง"
+        <label class="block text-xs text-slate-500 mb-1">รายการ / รายละเอียด (ไม่บังคับ)</label>
+        <input type="text" id="f_desc" placeholder="เช่น ค่าอาหารเที่ยง"
           class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
       </div>
       <div>
@@ -77,7 +77,7 @@
           <select id="f_category" required
             class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
             <option value="ผ่อนคอนโด">ผ่อนคอนโด</option>
-            <option value="อาหาร">อาหาร</option>
+            <option value="อาหาร" selected>อาหาร</option>
             <option value="เครื่องดื่ม">เครื่องดื่ม</option>
             <option value="ช้อปปิ้ง">ช้อปปิ้ง</option>
             <option value="ของขวัญ">ของขวัญ</option>
@@ -94,7 +94,7 @@
           <select id="f_channel" required
             class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
             <option value="Mobile banking">Mobile banking</option>
-            <option value="Credit Card">Credit Card</option>
+            <option value="Credit Card" selected>Credit Card</option>
             <option value="Cash">Cash</option>
           </select>
         </div>
@@ -206,7 +206,7 @@ function renderHistory(items) {
       row.className = "bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 flex items-center justify-between";
       row.innerHTML = `
         <div class="min-w-0">
-          <p class="text-sm text-slate-100 truncate">${escapeHtml(it.description)}</p>
+          <p class="text-sm text-slate-100 truncate">${escapeHtml(it.description) || "<span class=\"text-slate-500\">(ไม่มีรายละเอียด)</span>"}</p>
           <p class="text-xs text-slate-500">${escapeHtml(it.date)} · ${escapeHtml(it.category)} · ${escapeHtml(it.channel)}</p>
         </div>
         <span class="text-sm font-medium text-slate-100 shrink-0 ml-3">${fmt(it.amount)}</span>`;
@@ -324,7 +324,7 @@ el("expenseForm").addEventListener("submit", async (e) => {
     channel: el("f_channel").value,
     note: el("f_note").value.trim(),
   };
-  if (!payload.description || !payload.amount) return;
+  if (!payload.amount) return;
 
   btn.disabled = true;
   btn.textContent = "กำลังบันทึก...";
