@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>บันทึกรายจ่าย</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Sarabun, Roboto, sans-serif; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  .bar-fill { transition: width .5s ease; }
+  .toast { transition: opacity .3s ease, transform .3s ease; }
+</style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen pb-10">
+
+<!-- ================= CONFIG ================= -->
+<script>
+  // วางลิงก์ Web App ที่ได้จากการ Deploy Google Apps Script ตรงนี้
+  const WEB_APP_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
+  const CACHE_KEY = "expenseTrackerCache";
+  const MAX_ITEMS = 30;
+</script>
+
+<div class="max-w-md mx-auto px-4 pt-6">
+
+  <header class="mb-5">
+    <h1 class="text-xl font-semibold text-slate-50">บันทึกรายจ่าย</h1>
+    <p id="syncStatus" class="text-xs text-slate-500 mt-0.5">กำลังเตรียมข้อมูล...</p>
+  </header>
+
+  <!-- ============ Dashboard ============ -->
+  <section class="bg-slate-900 rounded-xl p-4 mb-5 border border-slate-800">
+    <div class="flex items-baseline justify-between mb-3">
+      <span class="text-sm text-slate-400">ยอดรวม (30 รายการล่าสุด)</span>
+      <span id="totalAmount" class="text-2xl font-bold text-emerald-400">฿0</span>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mt-4">
+      <div>
+        <p class="text-xs text-slate-500 mb-2">ตามหมวดหมู่</p>
+        <div id="byCategory" class="space-y-2"></div>
+      </div>
+      <div>
+        <p class="text-xs text-slate-500 mb-2">ตามช่องทาง</p>
+        <div id="byChannel" class="space-y-2"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Form ============ -->
+  <section class="bg-slate-900 rounded-xl p-4 mb-5 border border-slate-800">
+    <h2 class="text-sm font-medium text-slate-300 mb-3">เพิ่มรายการใหม่</h2>
+    <form id="expenseForm" class="space-y-3">
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">วันที่</label>
+        <input type="date" id="f_date" required
+          class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">รายการ / รายละเอียด</label>
+        <input type="text" id="f_desc" required placeholder="เช่น ค่าอาหารเที่ยง"
+          class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">จำนวนเงิน (บาท)</label>
+        <input type="number" id="f_amount" required min="0" step="0.01" placeholder="0.00"
+          class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">หมวดหมู่</label>
+          <select id="f_category" required
+            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="ผ่อนคอนโด">ผ่อนคอนโด</option>
+            <option value="อาหาร">อาหาร</option>
+            <option value="เครื่องดื่ม">เครื่องดื่ม</option>
+            <option value="ช้อปปิ้ง">ช้อปปิ้ง</option>
+            <option value="ของขวัญ">ของขวัญ</option>
+            <option value="ท่องเที่ยว">ท่องเที่ยว</option>
+            <option value="บันเทิง">บันเทิง</option>
+            <option value="สุขภาพ">สุขภาพ</option>
+            <option value="ค่าน้ำค่าไฟ">ค่าน้ำค่าไฟ</option>
+            <option value="ประกัน">ประกัน</option>
+            <option value="อื่นๆ">อื่นๆ</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">ช่องทางจ่าย</label>
+          <select id="f_channel" required
+            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="Mobile banking">Mobile banking</option>
+            <option value="Credit Card">Credit Card</option>
+            <option value="Cash">Cash</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">หมายเหตุ (ไม่บังคับ)</label>
+        <input type="text" id="f_note"
+          class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <button type="submit" id="submitBtn"
+        class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-medium rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50">
+        บันทึกรายการ
+      </button>
+    </form>
+  </section>
+
+  <!-- ============ History ============ -->
+  <section>
+    <h2 class="text-sm font-medium text-slate-300 mb-3">รายการล่าสุด</h2>
+    <div id="historyList" class="space-y-2"></div>
+    <p id="emptyMsg" class="text-sm text-slate-500 text-center py-6 hidden">ยังไม่มีรายการ</p>
+  </section>
+
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 text-sm px-4 py-2 rounded-lg opacity-0 pointer-events-none"></div>
+
+<script>
+const el = id => document.getElementById(id);
+
+function showToast(msg, isError) {
+  const t = el("toast");
+  t.textContent = msg;
+  t.className = "toast fixed bottom-5 left-1/2 -translate-x-1/2 text-sm px-4 py-2 rounded-lg border " +
+    (isError ? "bg-red-950 border-red-800 text-red-300" : "bg-slate-800 border-slate-700 text-slate-100");
+  t.style.opacity = "1";
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => { t.style.opacity = "0"; }, 2500);
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : { items: [], lastSync: null };
+  } catch (e) { return { items: [], lastSync: null }; }
+}
+
+function saveCache(items) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ items, lastSync: Date.now() }));
+  } catch (e) { /* storage full or unavailable - ignore */ }
+}
+
+function fmt(n) {
+  return "฿" + Number(n || 0).toLocaleString("th-TH", { maximumFractionDigits: 0 });
+}
+
+function render(items) {
+  // History list
+  const list = el("historyList");
+  const emptyMsg = el("emptyMsg");
+  list.innerHTML = "";
+  if (!items.length) {
+    emptyMsg.classList.remove("hidden");
+  } else {
+    emptyMsg.classList.add("hidden");
+    items.forEach(it => {
+      const row = document.createElement("div");
+      row.className = "bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 flex items-center justify-between";
+      row.innerHTML = `
+        <div class="min-w-0">
+          <p class="text-sm text-slate-100 truncate">${escapeHtml(it.description)}</p>
+          <p class="text-xs text-slate-500">${escapeHtml(it.date)} · ${escapeHtml(it.category)} · ${escapeHtml(it.channel)}</p>
+        </div>
+        <span class="text-sm font-medium text-slate-100 shrink-0 ml-3">${fmt(it.amount)}</span>`;
+      list.appendChild(row);
+    });
+  }
+
+  // Dashboard totals
+  const total = items.reduce((s, it) => s + Number(it.amount || 0), 0);
+  el("totalAmount").textContent = fmt(total);
+
+  renderGroup(el("byCategory"), groupBy(items, "category"), total);
+  renderGroup(el("byChannel"), groupBy(items, "channel"), total);
+}
+
+function groupBy(items, key) {
+  const map = {};
+  items.forEach(it => {
+    const k = it[key] || "อื่นๆ";
+    map[k] = (map[k] || 0) + Number(it.amount || 0);
+  });
+  return Object.entries(map).sort((a, b) => b[1] - a[1]);
+}
+
+function renderGroup(container, entries, total) {
+  container.innerHTML = "";
+  if (!entries.length) {
+    container.innerHTML = '<p class="text-xs text-slate-600">ไม่มีข้อมูล</p>';
+    return;
+  }
+  entries.slice(0, 5).forEach(([name, amount]) => {
+    const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `
+      <div class="flex justify-between text-xs mb-1">
+        <span class="text-slate-400 truncate mr-2">${escapeHtml(name)}</span>
+        <span class="text-slate-300 shrink-0">${fmt(amount)}</span>
+      </div>
+      <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+        <div class="bar-fill h-full bg-emerald-500 rounded-full" style="width:${pct}%"></div>
+      </div>`;
+    container.appendChild(wrap);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+// ---------- Data flow: cache first, then background refresh ----------
+async function init() {
+  const cache = loadCache();
+  render(cache.items);
+  el("syncStatus").textContent = cache.lastSync
+    ? "แสดงข้อมูลจากเครื่อง · กำลังอัปเดต..."
+    : "กำลังโหลดข้อมูล...";
+  await refreshFromServer();
+}
+
+async function refreshFromServer() {
+  if (!WEB_APP_URL || WEB_APP_URL.indexOf("https://script.google.com/macros/s/AKfycbzjAOcWazuvyp7xT6xnhy8bi-boxXjluy3-M27CAeCcP_plhOnrWt7NXkHHymQV5ybT/exec") === 0) {
+    el("syncStatus").textContent = "ยังไม่ได้ตั้งค่า WEB_APP_URL";
+    return;
+  }
+  try {
+    const res = await fetch(`${WEB_APP_URL}?action=list`);
+    const data = await res.json();
+    if (data.status === "success") {
+      saveCache(data.items);
+      render(data.items);
+      el("syncStatus").textContent = "อัปเดตล่าสุด " + new Date().toLocaleTimeString("th-TH");
+    } else {
+      throw new Error(data.message || "โหลดข้อมูลไม่สำเร็จ");
+    }
+  } catch (e) {
+    el("syncStatus").textContent = "ออฟไลน์ · แสดงข้อมูลที่บันทึกไว้ในเครื่อง";
+  }
+}
+
+el("f_date").valueAsDate = new Date();
+
+el("expenseForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = el("submitBtn");
+  const payload = {
+    date: el("f_date").value,
+    description: el("f_desc").value.trim(),
+    amount: parseFloat(el("f_amount").value),
+    category: el("f_category").value,
+    channel: el("f_channel").value,
+    note: el("f_note").value.trim(),
+  };
+  if (!payload.description || !payload.amount) return;
+
+  btn.disabled = true;
+  btn.textContent = "กำลังบันทึก...";
+
+  // Optimistic update: show it locally right away
+  const cache = loadCache();
+  const optimisticItems = [payload, ...cache.items].slice(0, MAX_ITEMS);
+  render(optimisticItems);
+
+  try {
+    const res = await fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, // avoids CORS preflight to Apps Script
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.status !== "success") throw new Error(data.message || "บันทึกไม่สำเร็จ");
+
+    saveCache(optimisticItems);
+    showToast("บันทึกรายการเรียบร้อย");
+    e.target.reset();
+    el("f_date").valueAsDate = new Date();
+    refreshFromServer();
+  } catch (err) {
+    showToast("บันทึกไม่สำเร็จ: " + err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "บันทึกรายการ";
+  }
+});
+
+init();
+</script>
+</body>
+</html>
